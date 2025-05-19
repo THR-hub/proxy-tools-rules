@@ -1,0 +1,51 @@
+proxy-providers:
+  provider:
+    url: SUBSCRIPTION_URL
+    type: http
+    path: "./proxies/provider.yaml"
+    interval: 86400
+    exclude-filter: "EMBY"
+  backup:
+    url: SUBSCRIPTION_URL
+    type: http
+    interval: 604800
+    path: ./proxies/backup.yaml
+
+dns:
+  enable: true
+  listen: ":53"
+  prefer-h3: true
+  enhanced-mode: fake-ip
+  fake-ip-filter: ["*", "+.lan", "+.local", "+.market.xiaomi.com", "*talk.google.com"]
+  default-nameserver: [system]
+  nameserver: [system]
+  proxy-server-nameserver: [1.2.4.8]
+sniffer:
+  enable: true
+  sniff: {HTTP: {ports: [80, 8080-8880], override-destination: true}, TLS: {ports: [443, 8443]}, QUIC: {ports: [443, 8443]}}
+  skip-domain: ["Mijia Cloud", "+.push.apple.com"]
+proxy-groups:
+  - {name: PROXY, type: select, use: [provider], proxies: [FALLBACK, backup]}
+  - {name: FALLBACK, type: fallback, use: [provider], interval: 3600, hidden: true}
+  - {name: iKuuu, type: url-test, use: [backup], interval: 86400, hidden: true}
+  - {name: MATCH, type: select, proxies: [DIRECT, PROXY]}
+
+rules:
+  - PROCESS-NAME,com.xiaomi.xmsf,DIRECT
+  - DOMAIN,outlook.office365.com,DIRECT
+  - GEOSITE,googlefcm,DIRECT
+
+  # https://github.com/MetaCubeX/meta-rules-dat
+  - GEOSITE,private,DIRECT
+  - GEOSITE,category-ads-all,REJECT
+  - GEOSITE,icloud,DIRECT
+  - GEOSITE,apple@cn,DIRECT
+  - GEOSITE,google@cn,DIRECT
+  - GEOSITE,geolocation-!cn,PROXY
+  - GEOSITE,cn,DIRECT
+  - GEOIP,LAN,DIRECT
+  - GEOIP,CN,DIRECT
+  - GEOSITE,tld-!cn,PROXY #blacklist only
+  - GEOSITE,gfw,PROXY #blacklist only
+  - GEOIP,telegram,PROXY
+  - MATCH,MATCH
